@@ -619,5 +619,6 @@ const ABSURL_REGEX = r"^[[:alpha:]+-.]+://"
 include("DOM.jl")
 include("MDFlatten.jl")
 include("TextDiff.jl")
+include("Selectors.jl")
 
 end
