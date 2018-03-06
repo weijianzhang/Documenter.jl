@@ -18,17 +18,6 @@ Enable or disable logging output for [`log`](@ref) and [`warn`](@ref).
 """
 logging(flag::Bool) = __log__[] = flag
 
-"""
-Format and print a message to the user.
-"""
-log(msg) = __log__[] ? printstyled(stdout, "Documenter: ", msg, "\n", color=:magenta) : nothing
-
-# Print logging output to the "real" stdout.
-function log(doc, msg)
-    __log__[] && printstyled(stdout, "Documenter: ", msg, "\n", color=:magenta)
-    return nothing
-end
-
 debug(msg) = printstyled(" ?? ", msg, "\n", color=:green)
 
 """

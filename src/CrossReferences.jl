@@ -73,7 +73,7 @@ function namedxref(link::Markdown.Link, meta, page, doc)
     if isempty(slug)
         text = sprint(Markdown.plaininline, link)
         push!(doc.internal.errors, :cross_references)
-        Utilities.warn(page.source, "'$text' missing a name after '#'.")
+        @warn "'$text' missing a name after '#'." # _file = page.source
     else
         if Anchors.exists(doc.internal.headers, slug)
             namedxref(link, slug, meta, page, doc)
@@ -99,11 +99,11 @@ function namedxref(link::Markdown.Link, slug, meta, page, doc)
             link.url = string(path, '#', slug, '-', anchor.nth)
         else
             push!(doc.internal.errors, :cross_references)
-            Utilities.warn(page.source, "'$slug' is not unique.")
+            @warn "'$slug' is not unique." # _file = page.source
         end
     else
         push!(doc.internal.errors, :cross_references)
-        Utilities.warn(page.source, "Reference for '$slug' could not be found.")
+        @warn "Reference for '$slug' could not be found." # _file = page.source
     end
 end
 
@@ -124,7 +124,7 @@ function docsxref(link::Markdown.Link, code, meta, page, doc)
         catch err
             !isa(err, Meta.ParseError) && rethrow(err)
             push!(doc.internal.errors, :cross_references)
-            Utilities.warn(page.source, "Unable to parse the reference '[`$code`](@ref)'.")
+            @warn "Unable to parse the reference '[`$code`](@ref)'." # _file = page.source
             return
         end
     end
@@ -159,7 +159,7 @@ function docsxref(link::Markdown.Link, code, meta, page, doc)
         link.url = string(path, '#', slug)
     else
         push!(doc.internal.errors, :cross_references)
-        Utilities.warn(page.source, "No doc found for reference '[`$code`](@ref)'.")
+        @error "No doc found for reference '[`$code`](@ref)'." # _file = page.source _mod = mod
     end
 end
 

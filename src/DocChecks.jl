@@ -29,7 +29,7 @@ Prints out the name of each object that has not had its docs spliced into the do
 """
 function missingdocs(doc::Documents.Document)
     doc.user.checkdocs === :none && return
-    println(" > checking for missing docstrings.")
+    @info "Checking for missing docstrings."
     bindings = allbindings(doc.user.checkdocs, doc.user.modules)
     for object in keys(doc.internal.objects)
         if haskey(bindings, object.binding)
@@ -44,14 +44,14 @@ function missingdocs(doc::Documents.Document)
     n = reduce(+, 0, map(length, values(bindings)))
     if n > 0
         b = IOBuffer()
-        println(b, "$n docstring$(n ≡ 1 ? "" : "s") potentially missing:\n")
+        println(b, "$n docstring$(n ≡ 1 ? "" : "s") potentially missing:")
         for (binding, signatures) in bindings
             for sig in signatures
-                println(b, "    $binding", sig ≡ Union{} ? "" : " :: $sig")
+                println(b, "  - $binding", sig ≡ Union{} ? "" : "(::$sig)")
             end
         end
         push!(doc.internal.errors, :missing_docs)
-        Utilities.warn(String(take!(b)))
+        @warn String(take!(b))
     end
 end
 
@@ -97,7 +97,7 @@ the document generation when an error is thrown. Use `doctest = false` keyword i
 """
 function doctest(doc::Documents.Document)
     if doc.user.doctest
-        println(" > running doctests.")
+        @info "Running doctests."
         for (src, page) in doc.internal.pages
             empty!(page.globals.meta)
             for element in page.elements
@@ -108,7 +108,7 @@ function doctest(doc::Documents.Document)
             end
         end
     else
-        Utilities.warn("Skipped doctesting.")
+        @warn "Skipped doctesting."
     end
 end
 
@@ -140,17 +140,14 @@ function doctest(block::Markdown.Code, meta::Dict, doc::Documents.Document, page
             kwargs = Meta.parse("($(lang[nextind(lang, idx):end]),)")
             for kwarg in kwargs.args
                 if !(isa(kwarg, Expr) && kwarg.head === :(=) && isa(kwarg.args[1], Symbol))
-                    Utilities.warn(
+                    @error(
                         """
                         Invalid syntax for doctest keyword arguments, use
                         ```jldoctest name; key1 = value1, key2 = value2
-                        in '$(meta[:CurrentFile])'
 
                         ```$(lang)
                         $(code)
-                        ```
-                        """
-                        )
+                        """#=, _file = meta[:CurrentFile]=#)
                     return false
                 end
                 d[kwarg.args[1]] = eval(sandbox, kwarg.args[2])
@@ -170,15 +167,14 @@ function doctest(block::Markdown.Code, meta::Dict, doc::Documents.Document, page
             block.language = "julia"
         else
             push!(doc.internal.errors, :doctest)
-            Utilities.warn(
+            @error(
                 """
-                Invalid doctest block. Requires `julia> ` or `# output` in '$(meta[:CurrentFile])'
+                Invalid doctest block. Requires `julia> ` or `# output`
 
                 ```$(lang)
                 $(code)
                 ```
-                """
-            )
+                """#=, _file = meta[:CurrentFile]=#)
         end
        delete!(meta, :LocalDocTestArguments)
     end
@@ -339,11 +335,10 @@ import .Utilities.TextDiff
 function report(result::Result, str, doc::Documents.Document)
     iob = IOBuffer()
     ioc = IOContext(iob, :color => Base.have_color)
-    println(ioc, "=====[Test Error]", "="^30)
-    println(ioc)
-    printstyled(ioc, "> File: ", result.file, "\n", color=:cyan)
-    printstyled(ioc, "\n> Code block:\n", color=:cyan)
-    println(ioc, "\n```jldoctest")
+    println(ioc, "Doctest Error in '$(result.file)'")
+    # printstyled(ioc, "> File: ", result.file, "\n", color=:cyan)
+    printstyled(ioc, "\n> Code block:\n\n", color=:cyan)
+    println(ioc, "```jldoctest")
     println(ioc, result.code)
     println(ioc, "```")
     if !isempty(result.input)
@@ -354,9 +349,10 @@ function report(result::Result, str, doc::Documents.Document)
     printstyled(ioc, "\n> Output Diff", warning, ":\n\n", color=:cyan)
     diff = TextDiff.Diff{TextDiff.Words}(result.output, rstrip(str))
     Utilities.TextDiff.showdiff(ioc, diff)
-    println(ioc, "\n\n", "=====[End Error]=", "="^30)
+    println(ioc)
+    println(ioc, "")
     push!(doc.internal.errors, :doctest)
-    printstyled(String(take!(iob)), color=:normal)
+    @error String(take!(iob)) #_file = result.file
 end
 
 function print_indented(buffer::IO, str::AbstractString; indent = 4)
@@ -428,7 +424,7 @@ end
 # ----------------
 
 function footnotes(doc::Documents.Document)
-    println(" > checking footnote links.")
+    @info "Checking footnote links."
     # A mapping of footnote ids to a tuple counter of how many footnote references and
     # footnote bodies have been found.
     #
@@ -450,17 +446,17 @@ function footnotes(doc::Documents.Document)
             # Multiple footnote bodies.
             if bodies > 1
                 push!(doc.internal.errors, :footnote)
-                Utilities.warn(page.source, "Footnote '$id' has $bodies bodies.")
+                @warn "Footnote '$id' has $bodies bodies." # _file = page.source
             end
             # No footnote references for an id.
             if ids === 0
                 push!(doc.internal.errors, :footnote)
-                Utilities.warn(page.source, "Unused footnote named '$id'.")
+                @warn "Unused footnote named '$id'." # _file = page.source
             end
             # No footnote bodies for an id.
             if bodies === 0
                 push!(doc.internal.errors, :footnote)
-                Utilities.warn(page.source, "No footnotes found for '$id'.")
+                @warn "No footnotes found for '$id'." # _file = page.source
             end
         end
     end
@@ -489,30 +485,33 @@ hascurl() = (try; success(`curl --version`); catch err; false; end)
 function linkcheck(doc::Documents.Document)
     if doc.user.linkcheck
         if hascurl()
-            println(" > checking external URLs:")
+            iob = IOBuffer()
+            ioc = IOContext(iob, :color => Base.have_color)
+            println(iob, "Checking external URLs:")
             for (src, page) in doc.internal.pages
-                println("   - ", src)
+                println(ioc, "  - ", src)
                 for element in page.elements
                     Walkers.walk(page.globals.meta, page.mapping[element]) do block
-                        linkcheck(block, doc)
+                        linkcheck(block, doc, ioc)
                     end
                 end
             end
+            @info String(take!(iob))
         else
             push!(doc.internal.errors, :linkcheck)
-            Utilities.warn("linkcheck requires `curl`.")
+            @warn "linkcheck requires `curl`."
         end
     end
     return nothing
 end
 
-function linkcheck(link::Markdown.Link, doc::Documents.Document)
+function linkcheck(link::Markdown.Link, doc::Documents.Document, io::IO)
     INDENT = " "^6
 
     # first, make sure we're not supposed to ignore this link
     for r in doc.user.linkcheck_ignore
         if linkcheck_ismatch(r, link.url)
-            printstyled(INDENT, "--- ", link.url, "\n", color=:normal)
+            printstyled(io, INDENT, "--- ", link.url, "\n", color=:normal)
             return false
         end
     end
@@ -523,35 +522,35 @@ function linkcheck(link::Markdown.Link, doc::Documents.Document)
             result = read(`curl -sI $(link.url)`, String)
         catch err
             push!(doc.internal.errors, :linkcheck)
-            Utilities.warn("`curl -sI $(link.url)` failed:\n\n$(err)")
+            @error "`curl -sI $(link.url)` failed:\n\n$(err)"
             return false
         end
         local STATUS_REGEX   = r"^HTTP/1.1 (\d+) (.+)$"m
         if contains(result, STATUS_REGEX)
             status = parse(Int, match(STATUS_REGEX, result).captures[1])
             if status < 300
-                printstyled(INDENT, "$(status) ", link.url, "\n", color=:green)
+                printstyled(io, INDENT, "$(status) ", link.url, "\n", color=:green)
             elseif status < 400
                 LOCATION_REGEX = r"^Location: (.+)$"m
                 if contains(result, LOCATION_REGEX)
                     location = strip(match(LOCATION_REGEX, result).captures[1])
-                    printstyled(INDENT, "$(status) ", link.url, "\n", color=:yellow)
-                    printstyled(INDENT, " -> ", location, "\n\n", color=:yellow)
+                    printstyled(io, INDENT, "$(status) ", link.url, "\n", color=:yellow)
+                    printstyled(io, INDENT, " -> ", location, "\n\n", color=:yellow)
                 else
-                    printstyled(INDENT, "$(status) ", link.url, "\n", color=:yellow)
+                    printstyled(io, INDENT, "$(status) ", link.url, "\n", color=:yellow)
                 end
             else
                 push!(doc.internal.errors, :linkcheck)
-                printstyled(INDENT, "$(status) ", link.url, "\n", color=:red)
+                printstyled(io, INDENT, "$(status) ", link.url, "\n", color=:red)
             end
         else
             push!(doc.internal.errors, :linkcheck)
-            Utilities.warn("invalid result returned by `curl -sI $(link.url)`:\n\n$(result)")
+            @error "Invalid result returned by `curl -sI $(link.url)`:\n\n$(result)"
         end
     end
     return false
 end
-linkcheck(other, doc::Documents.Document) = true
+linkcheck(other, doc::Documents.Document, io) = true
 
 linkcheck_ismatch(r::String, url) = (url == r)
 linkcheck_ismatch(r::Regex, url) = contains(url, r)

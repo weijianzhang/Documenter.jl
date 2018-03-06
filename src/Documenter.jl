@@ -421,19 +421,19 @@ function deploydocs(;
         Deps.updatepath!()
         # Install dependencies when applicable.
         if deps !== nothing
-            Utilities.log("installing dependencies.")
+            @info "Installing dependencies."
             deps()
         end
         # Change to the root directory and try to deploy the docs.
         cd(root) do
-            Utilities.log("setting up target directory.")
+            @info "Setting up target directory."
             isdir(target) || mkpath(target)
             # Run extra build steps defined in `make` if required.
             if make !== nothing
-                Utilities.log("running extra build steps.")
+                @info "Running extra build steps."
                 make()
             end
-            Utilities.log("pushing new documentation to remote: $repo:$branch.")
+            @info "Pushing new documentation to remote: $repo:$branch."
             mktempdir() do temp
                 git_push(
                     root, temp, repo;
@@ -443,9 +443,10 @@ function deploydocs(;
             end
         end
     else
-        Utilities.log("""
-            skipping docs deployment.
-              You can set DOCUMENTER_DEBUG to "true" in Travis to see more information.""")
+        @info """
+              Skipping docs deployment.
+              You can set DOCUMENTER_DEBUG to "true" in Travis to see more information.
+              """
     end
 end
 
@@ -500,8 +501,8 @@ function git_push(
                 try
                     run(`git checkout -b $branch upstream/$branch`)
                 catch e
-                    Utilities.log("Checking out $branch failed with error: $e")
-                    Utilities.log("Creating a new local $branch branch.")
+                    @info "Checking out $branch failed with error: $e"
+                    @info "Creating a new local $branch branch."
                     run(`git checkout --orphan $branch`)
                     run(`git commit --allow-empty -m "Initial empty commit for docs"`)
                 end
@@ -535,7 +536,7 @@ function git_push(
                     run(`git commit -m "build based on $sha"`)
                     run(`git push -q upstream HEAD:$branch`)
                 else
-                    Utilities.log("New docs identical to the old -- not committing nor pushing.")
+                    @info "New docs identical to the old -- not committing nor pushing."
                 end
             end
         end

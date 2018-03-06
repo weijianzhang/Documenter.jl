@@ -75,7 +75,7 @@ Selectors.matcher(::Type{T}, doc::Documents.Document) where {T <: DocumentPipeli
 Selectors.strict(::Type{T}) where {T <: DocumentPipeline} = false
 
 function Selectors.runner(::Type{SetupBuildDirectory}, doc::Documents.Document)
-    Utilities.log(doc, "setting up build directory.")
+    @info "Setting up build directory."
 
     # Frequently used fields.
     build  = doc.user.build
@@ -174,17 +174,17 @@ walk_navpages(src::String, parent, doc) = walk_navpages(true, nothing, src, [], 
 
 
 function Selectors.runner(::Type{ExpandTemplates}, doc::Documents.Document)
-    Utilities.log(doc, "expanding markdown templates.")
+    @info "Expanding markdown templates."
     Documenter.Expanders.expand(doc)
 end
 
 function Selectors.runner(::Type{CrossReferences}, doc::Documents.Document)
-    Utilities.log(doc, "building cross-references.")
+    @info "Building cross-references."
     Documenter.CrossReferences.crossref(doc)
 end
 
 function Selectors.runner(::Type{CheckDocument}, doc::Documents.Document)
-    Utilities.log(doc, "running document checks.")
+    @info "Running document checks."
     Documenter.DocChecks.missingdocs(doc)
     Documenter.DocChecks.doctest(doc)
     Documenter.DocChecks.footnotes(doc)
@@ -192,7 +192,7 @@ function Selectors.runner(::Type{CheckDocument}, doc::Documents.Document)
 end
 
 function Selectors.runner(::Type{Populate}, doc::Documents.Document)
-    Utilities.log("populating indices.")
+    @info "Populating indices."
     Documents.populate!(doc)
 end
 
@@ -201,7 +201,7 @@ function Selectors.runner(::Type{RenderDocument}, doc::Documents.Document)
     if doc.user.strict && count > 0
         error("`makedocs` encountered $(count > 1 ? "errors" : "an error"). Terminating build")
     else
-        Utilities.log(doc, "rendering document.")
+        @info "Rendering document."
         Documenter.Writers.render(doc)
     end
 end

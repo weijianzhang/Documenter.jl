@@ -260,7 +260,7 @@ function Selectors.runner(::Type{DocsBlocks}, x, page, doc)
         # Undefined `Bindings` get discarded.
         if !Documenter.DocSystem.iskeyword(binding) && !Documenter.DocSystem.defined(binding)
             push!(doc.internal.errors, :docs_block)
-            Utilities.warn(page.source, "Undefined binding '$(binding)'.")
+            @warn "Undefined binding '$(binding)'." # _file = page.source
             failed = true
             continue
         end
@@ -270,7 +270,7 @@ function Selectors.runner(::Type{DocsBlocks}, x, page, doc)
         # We can't include the same object more than once in a document.
         if haskey(doc.internal.objects, object)
             push!(doc.internal.errors, :docs_block)
-            Utilities.warn(page.source, "Duplicate docs found for '$(strip(str))'.")
+            @warn "Duplicate docs found for '$(strip(str))'." # _file = page.source
             failed = true
             continue
         end
@@ -286,7 +286,7 @@ function Selectors.runner(::Type{DocsBlocks}, x, page, doc)
         # Check that we aren't printing an empty docs list. Skip block when empty.
         if isempty(docs)
             push!(doc.internal.errors, :docs_block)
-            Utilities.warn(page.source, "No docs found for '$(strip(str))'.")
+            @warn "No docs found for '$(strip(str))'." # _file = page.source
             failed = true
             continue
         end
@@ -382,7 +382,7 @@ function Selectors.runner(::Type{AutoDocsBlocks}, x, page, doc)
         for (mod, path, category, object, isexported, docstr) in results
             if haskey(doc.internal.objects, object)
                 push!(doc.internal.errors, :autodocs_block)
-                Utilities.warn(page.source, "Duplicate docs found for '$(object.binding)'.")
+                @warn "Duplicate docs found for '$(object.binding)'." # _file = page.source
                 continue
             end
             markdown = Markdown.MD(Documenter.DocSystem.parsedoc(docstr))
@@ -400,7 +400,7 @@ function Selectors.runner(::Type{AutoDocsBlocks}, x, page, doc)
         page.mapping[x] = DocsNodes(nodes)
     else
         push!(doc.internal.errors, :autodocs_block)
-        Utilities.warn(page.source, "'@autodocs' missing 'Modules = ...'.")
+        @warn "'@autodocs' missing 'Modules = ...'." # _file = page.source
         page.mapping[x] = x
     end
 end
@@ -464,7 +464,7 @@ function Selectors.runner(::Type{ExampleBlocks}, x, page, doc)
         print(buffer, text)
         if !success
             push!(doc.internal.errors, :example_block)
-            Utilities.warn(page.source, "failed to run code block.\n\n$(value)")
+            @warn "failed to run code block.\n\n$(value)") # _file = page.source
             page.mapping[x] = x
             return
         end
@@ -542,7 +542,7 @@ function Selectors.runner(::Type{SetupBlocks}, x, page, doc)
         Markdown.MD([])
     catch err
         push!(doc.internal.errors, :setup_block)
-        Utilities.warn(page.source, "failed to run `@setup` block.\n\n$(err)")
+        @warn "failed to run `@setup` block.\n\n$(err)") # _file = page.source
         x
     end
     # ... and finally map the original code block to the newly generated ones.
