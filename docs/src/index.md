@@ -2,6 +2,19 @@
 
 *A documentation generator for Julia.*
 
+```jldoctest
+julia> 2 + 2
+5
+```
+
+```jldoctest
+julia> pwd()
+5
+
+julia> @__DIR__
+X
+```
+
 A package for building documentation from docstrings and markdown files.
 
 !!! note

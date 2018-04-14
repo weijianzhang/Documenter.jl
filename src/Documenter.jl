@@ -43,9 +43,9 @@ include("DocSystem.jl")
 include("Formats.jl")
 include("Anchors.jl")
 include("Documents.jl")
-include("Builder.jl")
 include("Expanders.jl")
 include("Walkers.jl")
+include("Builder.jl")
 include("CrossReferences.jl")
 include("Doctests.jl")
 include("DocChecks.jl")
@@ -677,6 +677,40 @@ function generate(pkgname::AbstractString; dir=nothing)
         rethrow()
     end
     nothing
+end
+
+
+"""
+Fooo!
+
+```@example
+f(x) = x^2
+f(20)
+```
+
+"""
+module Foo
+using DocStringExtensions
+
+"""
+$(SIGNATURES)
+
+```jldoctest
+julia> foo(3)
+8
+```
+"""
+function bar end
+
+"""
+$(SIGNATURES)
+
+```jldoctest
+julia> foo(4)
+16
+```
+"""
+function baz end
 end
 
 end

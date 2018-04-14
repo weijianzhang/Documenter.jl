@@ -62,6 +62,10 @@ function __ans__!(m::Module, value)
 end
 
 function doctest(block::Markdown.Code, meta::Dict, doc::Documents.Document, page)
+    doctest(Markdown2._convert_block(block), meta, doc, page)
+end
+
+function doctest(block::Markdown2.CodeBlock, meta::Dict, doc::Documents.Document, page)
     lang = block.language
     if startswith(lang, "jldoctest")
         # Define new module or reuse an old one from this page if we have a named doctest.
@@ -75,7 +79,8 @@ function doctest(block::Markdown.Code, meta::Dict, doc::Documents.Document, page
         end
 
         # Normalise line endings.
-        block.code = replace(block.code, "\r\n" => "\n")
+        #block.code = replace(block.code, "\r\n" => "\n")
+        block = Markdown2.CodeBlock(block.language, replace(block.code, "\r\n" => "\n"))
 
         # parse keyword arguments to doctest
         d = Dict()
@@ -109,10 +114,10 @@ function doctest(block::Markdown.Code, meta::Dict, doc::Documents.Document, page
         end
         if occursin(r"^julia> "m, block.code)
             eval_repl(block, sandbox, meta, doc, page)
-            block.language = "julia-repl"
+            #block.language = "julia-repl"
         elseif occursin(r"^# output$"m, block.code)
             eval_script(block, sandbox, meta, doc, page)
-            block.language = "julia"
+            #block.language = "julia"
         else
             push!(doc.internal.errors, :doctest)
             file = meta[:CurrentFile]
