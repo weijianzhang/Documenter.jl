@@ -501,7 +501,7 @@ function Selectors.runner(::Type{ExampleBlocks}, x, page, doc)
     # Special-case support for displaying SVG graphics. TODO: make this more general.
     output = showable(MIME"image/svg+xml"(), result) ?
         Documents.RawHTML(Base.invokelatest(stringmime, MIME"image/svg+xml"(), result)) :
-        Markdown.Code(Documenter.DocChecks.result_to_string(buffer, result))
+        Markdown.Code(Documenter.Doctests.result_to_string(buffer, result))
 
     # Only add content when there's actually something to add.
     isempty(input)  || push!(content, Markdown.Code("julia", input))
@@ -532,9 +532,9 @@ function Selectors.runner(::Type{REPLBlocks}, x, page, doc)
         result = value
         output = if success
             hide = Documenter.REPL.ends_with_semicolon(input)
-            Documenter.DocChecks.result_to_string(buffer, hide ? nothing : value)
+            Documenter.Doctests.result_to_string(buffer, hide ? nothing : value)
         else
-            Documenter.DocChecks.error_to_string(buffer, value, [])
+            Documenter.Doctests.error_to_string(buffer, value, [])
         end
         isempty(input) || println(out, prepend_prompt(input))
         print(out, text)
